@@ -10,6 +10,10 @@ note_x=652
 note_y=[339, 513, 681, 853, 1024, 1194][::-1]
 
 pos_next=(2453, 768)
+pos_prev=(238, 768)
+
+pos_short=(223, 1360)
+pos_long=(570, 1360)
 
 flag=[False]
 
@@ -22,17 +26,43 @@ def click_at(x,y):
 def plot(path):
     script=np.load(path)
     tick=-args.offset
+    last_state=0
 
     for i, note in enumerate(script):
         if flag[0]:
             break
 
-        print(i)
-        while tick<note[0]:
-            tick+=1
-            click_at(*pos_next)
+        if note[1]-note[0]>args.long:
+            if last_state!=1:
+                click_at(*pos_long)
 
-        click_at(note_x, note_y[note[2]])
+            while tick<note[0]:
+                tick+=1
+                click_at(*pos_next)
+
+            click_at(note_x, note_y[note[2]])
+
+            tick_tmp = tick
+            while tick_tmp<note[1]:
+                tick_tmp+=1
+                click_at(*pos_next)
+
+            click_at(note_x, note_y[note[2]])
+
+            for i in range(tick_tmp-tick):
+                click_at(*pos_prev)
+            last_state=1
+        else:
+            if last_state!=0:
+                click_at(*pos_short)
+
+            while tick<note[0]:
+                tick+=1
+                click_at(*pos_next)
+
+            click_at(note_x, note_y[note[2]])
+
+            last_state = 0
 
 def on_press(key):
     if key=='q':
@@ -43,6 +73,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='OF Generate')
     parser.add_argument('-p', '--path', default='xg.npy', type=str)
     parser.add_argument('-d', '--delay', default=0.02, type=float)
+    parser.add_argument('-l', '--long', default=6, type=int)
     parser.add_argument('--offset', default=9, type=int)
     args = parser.parse_args()
 

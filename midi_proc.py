@@ -3,6 +3,7 @@ from mido import Message, MidiFile, MidiTrack
 import numpy as np
 from collections import Counter
 import argparse
+import os
 
 def tracks_mix(mid, tracks):
     note_list=[]
@@ -150,10 +151,39 @@ def note2script(note_list, time_th=0.03, note_cap=6, beat=69):
     result=result[np.argsort(result[:,0]),:]
     return result
 
+def proc_long(script, long_th=6):
+    occupy_map = np.zeros((6, np.max(script[:, 1]) + 1), dtype=np.uint8)
+
+    def find_empty_line(l,h):
+        for i in range(6):
+            if (occupy_map[i,l:h]==0).all():
+                return i
+            return -1
+
+    #rm_idxs=[]
+    for i, note in enumerate(script):
+        if note[1]-note[0]>long_th:
+            if occupy_map[note[2], note[0]]==1:
+                if (occupy_map[note[2], note[0]+1:note[1]+1]==0).all():
+                    script[i,0]+=1
+                else:
+                    eline=find_empty_line(note[0], note[1]+1)
+                    if eline==-1:
+                        #rm_idxs.append(i)
+                        script[i,1]=note[0]+1
+                        occupy_map[note[2], note[0]] = 1
+                        continue
+                    else:
+                        script[i,2]=eline
+            occupy_map[note[2], note[0]:note[1]+1]=1
+        else:
+            occupy_map[note[2], note[0]] = 1
+    #script = np.delete(script, rm_idxs, axis=0)
+    return script
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='OF Generate')
-    parser.add_argument('-p', '--path', default='midi/xg.midi', type=str)
+    parser.add_argument('-p', '--path', default='midi/xg.mid', type=str)
     args = parser.parse_args()
 
     mid = mido.MidiFile(args.path, clip=True)
@@ -165,4 +195,5 @@ if __name__ == '__main__':
 
     note_list = note_mix(note_list)
     script=note2script(note_list)
-    np.save(f'{args.path[:-4]}npy', script)
+    script=proc_long(script)
+    np.save(f'{os.path.basename(args.path)[:-4]}.npy', script)
