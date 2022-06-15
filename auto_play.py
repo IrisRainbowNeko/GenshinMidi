@@ -37,13 +37,13 @@ class Player:
         self.DEFAULT_MONITOR_HEIGHT=height
 
         self.det_areas=[
-            [820,505,820+130,505+130],
-            [950,570,950+130,570+130],
-            [1095,600,1095+130,600+130],
+            [820,505,130,130],
+            [950,570,130,130],
+            [1095,600,130,130],
 
-            [1330,600,1330+130,600+130],
-            [1470,570,1470+130,570+130],
-            [1605,505,1605+130,505+130],
+            [1330,600,130,130],
+            [1470,570,130,130],
+            [1605,505,130,130],
         ]
 
         self.tmp_short=cv2.imread('imgs/short.png', cv2.IMREAD_COLOR)
@@ -115,7 +115,7 @@ class Player:
 
         while True:
             #识别音符
-            image=self.cap()
+            image=self.cap(self.det_areas)
             note_short, note_long = self.check_note(image)
             for note in note_short:
                 short_queue.append((note, time.time()))
@@ -126,32 +126,25 @@ class Player:
                 self.flag=True
                 break
 
-    def check_note(self, image):
-        det_imgs=[image[area[1]:area[3], area[0]:area[2], :] for area in self.det_areas]
+    def check_note(self, det_imgs):
+        #det_imgs=[image[area[1]:area[3], area[0]:area[2], :] for area in self.det_areas]
         dets_short=[match_img(imgs, self.tmp_short, mask=self.mask_short) for imgs in det_imgs]
         dets_long=[match_img(imgs, self.tmp_long, mask=self.mask_long) for imgs in det_imgs]
         #print([x[-1] for x in dets_short], [x[-1] for x in dets_long])
 
         note_short = [i for i,item in enumerate(dets_short) if item[-1]<self.note_th]
         note_long = [i for i,item in enumerate(dets_long) if item[-1]<self.note_th_long]
-        if len(note_short)>0 or len(note_long)>0:
-            print([x[-1] for x in dets_short], [x[-1] for x in dets_long])
+        #if len(note_short)>0 or len(note_long)>0:
+        #    print([x[-1] for x in dets_short], [x[-1] for x in dets_long])
 
         note_long = [x for i,x in enumerate(note_long) if not ((x in note_short) and (dets_short[i][-1]<dets_long[i][-1]))]
         note_short = [x for i,x in enumerate(note_short) if not ((x in note_long) and (dets_long[i][-1]<dets_short[i][-1]))]
 
         return note_short, note_long
 
-    def cap(self, region=None):
-        if region is not None:
-            left, top, w, h = region
-            # w = x2 - left + 1
-            # h = y2 - top + 1
-        else:
-            w = self.DEFAULT_MONITOR_WIDTH  # set this
-            h = self.DEFAULT_MONITOR_HEIGHT  # set this
-            left = 0
-            top = 0
+    def cap(self, regions):
+        w,h = regions[0][2:]
+        det_imgs=[]
 
         wDC = win32gui.GetWindowDC(self.hwnd)
         dcObj = win32ui.CreateDCFromHandle(wDC)
@@ -161,11 +154,13 @@ class Player:
         dataBitMap.CreateCompatibleBitmap(dcObj, w, h)
 
         cDC.SelectObject(dataBitMap)
-        cDC.BitBlt((0, 0), (w, h), dcObj, (left, top), win32con.SRCCOPY)
-        # dataBitMap.SaveBitmapFile(cDC, bmpfilenamename)
-        signedIntsArray = dataBitMap.GetBitmapBits(True)
-        img = np.frombuffer(signedIntsArray, dtype="uint8")
-        img.shape = (h, w, 4)
+        for area in regions:
+            cDC.BitBlt((0, 0), (w, h), dcObj, (area[0], area[1]), win32con.SRCCOPY)
+            # dataBitMap.SaveBitmapFile(cDC, bmpfilenamename)
+            signedIntsArray = dataBitMap.GetBitmapBits(True)
+            img = np.frombuffer(signedIntsArray, dtype="uint8")
+            img.shape = (h, w, 4)
+            det_imgs.append(cv2.cvtColor(img, cv2.COLOR_RGBA2RGB))
 
         # Free Resources
         dcObj.DeleteDC()
@@ -173,7 +168,7 @@ class Player:
         win32gui.ReleaseDC(self.hwnd, wDC)
         win32gui.DeleteObject(dataBitMap.GetHandle())
 
-        return cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+        return det_imgs
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
@@ -185,6 +180,7 @@ if __name__ == '__main__':
     #image=cv2.imread('imgs/sc2.bmp', cv2.IMREAD_COLOR)
     player=Player(key_delay=args.delay, width=args.width, height=args.height)
     #player.check_note(image)
+    print('press t to start')
     while win32api.GetKeyState(ord('T'))>=0:
         pass
     player.pre_start()
