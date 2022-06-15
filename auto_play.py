@@ -176,10 +176,10 @@ class Player:
         return cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='OF Generate')
-    parser.add_argument('-d', '--delay', default=0.32, type=float)
-    parser.add_argument('-w', '--width', default=2560, type=int)
-    parser.add_argument('-h', '--height', default=1440, type=int)
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--delay', default=0.32, type=float)
+    parser.add_argument('--width', default=2560, type=int)
+    parser.add_argument('--height', default=1440, type=int)
     args = parser.parse_args()
 
     #image=cv2.imread('imgs/sc2.bmp', cv2.IMREAD_COLOR)
