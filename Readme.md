@@ -1,7 +1,7 @@
 # 自动生成乐谱
 首先使用 [MT3](https://github.com/magenta/mt3) 将mp3转换成Midi格式的音频 (可以使用colab在线运行，需要vpn)
 
-运行 **midi_proc.py** 将midi转换成可以防止的脚步。
+运行 **midi_proc.py** 将midi转换成可以放置的脚本。
 
 在 **管理员模式** 的命令行下， 运行 **plot_script.py** 摆放音符，节拍选择1/6。
 
