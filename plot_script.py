@@ -9,11 +9,11 @@ import argparse
 note_x=652
 note_y=[339, 513, 681, 853, 1024, 1194][::-1]
 
-pos_next=(2453, 768)
-pos_prev=(238, 768)
+pos_next=[2453, 768]
+pos_prev=[238, 768]
 
-pos_short=(223, 1360)
-pos_long=(570, 1360)
+pos_short=[223, 1360]
+pos_long=[570, 1360]
 
 flag=[False]
 
@@ -73,9 +73,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='OF Generate')
     parser.add_argument('-p', '--path', default='xg.npy', type=str)
     parser.add_argument('-d', '--delay', default=0.02, type=float)
-    parser.add_argument('-l', '--long', default=6, type=int)
+    parser.add_argument('-l', '--long', default=10, type=int) #长键阈值
     parser.add_argument('--offset', default=9, type=int)
+    parser.add_argument('--width', default=2560, type=int)
+    parser.add_argument('--height', default=1440, type=int)
     args = parser.parse_args()
+
+    if args.width!=2560 or args.height!=1440:
+        factor = (args.width / 2560, args.height / 1440)
+        note_x=factor[0]
+        note_y=[item*factor[1] for item in note_y]
+
+        for item in [pos_next, pos_prev, pos_short, pos_long]:
+            item[0]*=factor[0]; item[1]*=factor[1]
 
     print('start in 5s')
     time.sleep(5)
