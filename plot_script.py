@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
     if args.width!=2560 or args.height!=1440:
         factor = (args.width / 2560, args.height / 1440)
-        note_x=factor[0]
+        note_x=note_x*factor[0]
         note_y=[item*factor[1] for item in note_y]
 
         for item in [pos_next, pos_prev, pos_short, pos_long]:
