@@ -73,7 +73,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='OF Generate')
     parser.add_argument('-p', '--path', default='xg.npy', type=str)
     parser.add_argument('-d', '--delay', default=0.02, type=float)
-    parser.add_argument('-l', '--long', default=10, type=int) #长键阈值
+    parser.add_argument('-l', '--long', default=30, type=int) #长键阈值
     parser.add_argument('--offset', default=9, type=int)
     parser.add_argument('--width', default=2560, type=int)
     parser.add_argument('--height', default=1440, type=int)

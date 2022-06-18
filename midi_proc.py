@@ -85,7 +85,7 @@ def make_midi(note_list, path):
     mid.tracks.append(track)
     mid.save(path)
 
-def note_mix(note_list, iou_th=0.7):
+def note_mix(note_list, iou_th=0.5):
     #合并同时间音符，适应谱子
     note_list_mix=[]
     rm_idxs = []
@@ -113,7 +113,18 @@ def note_mix(note_list, iou_th=0.7):
     print('mix:', len(rm_idxs))
     return note_list_mix
 
-def note2script(note_list, time_th=0.03, note_cap=6, beat=69):
+def note_expend(note_list_mix, log_base=2):
+    note_list=[]
+    for note in note_list_mix:
+        n_exp = int(np.log(note[3])/np.log(log_base)+1)
+        if n_exp>1:
+            for i in range(n_exp):
+                note_list.append([note[0], note[1], note[2]+i])
+        else:
+            note_list.append(note[:3])
+    return note_list
+
+def note2script(note_list, time_th=0.03, note_cap=6, beat=59):
     #求有相交的子集
     note_group_list=[]
     i=0
@@ -151,7 +162,7 @@ def note2script(note_list, time_th=0.03, note_cap=6, beat=69):
     result=result[np.argsort(result[:,0]),:]
     return result
 
-def proc_long(script, long_th=6):
+def proc_long(script, long_th=30):
     occupy_map = np.zeros((6, np.max(script[:, 1]) + 1), dtype=np.uint8)
 
     def find_empty_line(l,h):
@@ -160,30 +171,45 @@ def proc_long(script, long_th=6):
                 return i
             return -1
 
-    #rm_idxs=[]
-    for i, note in enumerate(script):
-        if note[1]-note[0]>long_th:
-            if occupy_map[note[2], note[0]]==1:
-                if (occupy_map[note[2], note[0]+1:note[1]+1]==0).all():
-                    script[i,0]+=1
-                else:
-                    eline=find_empty_line(note[0], note[1]+1)
-                    if eline==-1:
-                        #rm_idxs.append(i)
-                        script[i,1]=note[0]+1
-                        occupy_map[note[2], note[0]] = 1
-                        continue
-                    else:
-                        script[i,2]=eline
-            occupy_map[note[2], note[0]:note[1]+1]=1
+    def check_short(note):
+        if occupy_map[note[2], note[0]] == 1:
+            eline = find_empty_line(note[0], note[1] + 1)
+            if eline == -1:
+                return
+            else:
+                script[i, 2] = eline
+                occupy_map[eline, note[0]] = 1
         else:
             occupy_map[note[2], note[0]] = 1
+
+    #rm_idxs=[]
+    for i, note in enumerate(script):
+        if note[1]-note[0]>long_th: #长键
+            if occupy_map[note[2], note[0]]==1: #起始点被占用
+                eline = find_empty_line(note[0], note[1] + 1)  # 查找未被占用的一行
+                if eline == -1:  # 全都被占用
+                    if (occupy_map[note[2], note[0] + 1:note[1] + 1] == 0).all():  # 起始点前面一格未被占用 (音符首尾重叠)
+                        script[i, 0] += 1
+                    else: #转为短键
+                        script[i, 1] = note[0] + 1
+                        check_short(script[i])
+                        continue
+                else:
+                    script[i, 2] = eline
+            occupy_map[script[i,2], note[0]:note[1]+1]=1
+        else:
+            check_short(note)
+
     #script = np.delete(script, rm_idxs, axis=0)
     return script
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='OF Generate')
     parser.add_argument('-p', '--path', default='midi/xg.mid', type=str)
+    parser.add_argument('-l', '--long', default=30, type=int)
+    parser.add_argument('--beat', default=74, type=int)
+    parser.add_argument('--iou_mix', default=0.7, type=float)
+    parser.add_argument('--log_base', default=3, type=float)
     args = parser.parse_args()
 
     mid = mido.MidiFile(args.path, clip=True)
@@ -191,9 +217,10 @@ if __name__ == '__main__':
     note_list = note_overleap_mix(note_list)
     note_list = note_short_rm(note_list)
 
-    #make_midi(note_list, 'test.mid')
+    make_midi(note_list, 'test.mid')
 
-    note_list = note_mix(note_list)
-    script=note2script(note_list)
-    script=proc_long(script)
+    note_list = note_mix(note_list, iou_th=args.iou_mix)
+    note_list = note_expend(note_list, log_base=args.log_base)
+    script=note2script(note_list, beat=args.beat)
+    script=proc_long(script, long_th=args.long)
     np.save(f'{os.path.basename(args.path)[:-4]}.npy', script)
